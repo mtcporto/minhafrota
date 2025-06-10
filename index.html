@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">    <title>MinhaFrota - Sistema de Rastreamento</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>* {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --bg-tertiary: #3a3a3a;
+            --text-primary: #ffffff;
+            --text-secondary: #b0b0b0;
+            --text-muted: #808080;
+            --accent-primary: #4a90e2;
+            --accent-success: #28a745;
+            --accent-warning: #ffc107;
+            --accent-danger: #dc3545;
+            --border-color: #404040;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px var(--shadow);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header .subtitle {
+            opacity: 0.8;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }        .card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px var(--shadow);
+            transition: transform 0.3s ease;
+            border: 1px solid var(--border-color);
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+        }
+
+        .card-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .status-online { background: var(--accent-success); color: white; }
+        .status-warning { background: var(--accent-warning); color: white; }
+        .status-info { background: var(--accent-primary); color: white; }
+        .status-danger { background: var(--accent-danger); color: white; }
+
+        .card-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .card-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+        }        .map-container {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px var(--shadow);
+            height: 500px;
+            border: 1px solid var(--border-color);
+        }
+
+        .map-container h3 {
+            color: var(--text-primary);
+        }
+
+        #map {
+            height: 400px;
+            width: 100%;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }        .leaflet-popup-content-wrapper {
+            background: var(--bg-secondary) !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border-color) !important;
+        }
+
+        .leaflet-popup-tip {
+            background: var(--bg-secondary) !important;
+        }
+
+        .leaflet-popup-close-button {
+            color: var(--text-primary) !important;
+        }@keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+
+        .tooltip {
+            position: relative;
+            cursor: help;
+        }
+
+        .tooltip:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            z-index: 1000;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 10px var(--shadow);
+        }
+
+        .tooltip:hover::before {
+            content: '';
+            position: absolute;
+            bottom: 120%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: var(--bg-tertiary);
+            z-index: 1000;
+        }.vehicle-info {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+
+        .vehicle-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .vehicle-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--accent-primary), #5a9fd4);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            color: white;
+            margin-right: 1rem;
+        }
+
+        .vehicle-details h3 {
+            font-size: 1.2rem;
+            margin-bottom: 0.3rem;
+            color: var(--text-primary);
+        }
+
+        .vehicle-status {
+            display: inline-block;
+            padding: 4px 12px;
+            background: var(--accent-success);
+            color: white;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .info-item {
+            background: var(--bg-tertiary);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .info-item .label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.3rem;
+        }
+
+        .info-item .value {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+
+        .eco-score {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .eco-score h4 {
+            margin-bottom: 0.5rem;
+        }
+
+        .eco-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .eco-breakdown {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .eco-item {
+            text-align: center;
+        }
+
+        .eco-item .score {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .eco-item .label {
+            font-size: 0.7rem;
+            opacity: 0.9;
+        }        .events-log {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px var(--shadow);
+            margin-top: 2rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .events-log h3 {
+            color: var(--text-primary);
+        }
+
+        .event-item {
+            display: flex;
+            align-items: center;
+            padding: 0.8rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .event-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .event-info {
+            flex: 1;
+        }
+
+        .event-title {
+            font-weight: bold;
+            margin-bottom: 0.2rem;
+            color: var(--text-primary);
+        }
+
+        .event-time {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(40, 167, 69, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            color: var(--accent-success);
+            font-weight: bold;
+            border: 1px solid rgba(40, 167, 69, 0.2);
+        }        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #27ae60;
+            border-radius: 50%;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>    <div class="header">
+        <h1><i class="fas fa-truck"></i> MinhaFrota</h1>
+        <div class="subtitle">Sistema de Rastreamento e Gestão de Frotas</div>
+        <div class="live-indicator" style="margin-top: 0.5rem;">
+            <div class="live-dot"></div>
+            DADOS AO VIVO
+        </div>
+    </div>
+
+    <div class="container">        <!-- Dashboard Cards -->
+        <div class="dashboard-grid">
+            <div class="card tooltip" data-tooltip="Número total de veículos conectados e transmitindo dados">
+                <div class="card-icon status-online"><i class="fas fa-car"></i></div>
+                <div class="card-value" id="vehicle-count">1</div>
+                <div class="card-label">Veículos Ativos</div>
+            </div>
+            
+            <div class="card tooltip" data-tooltip="Velocidade atual do veículo em quilômetros por hora">
+                <div class="card-icon status-info"><i class="fas fa-tachometer-alt"></i></div>
+                <div class="card-value" id="current-speed">65</div>
+                <div class="card-label">Velocidade (km/h)</div>
+            </div>
+            
+            <div class="card tooltip" data-tooltip="Nível atual de combustível no tanque">
+                <div class="card-icon status-warning"><i class="fas fa-gas-pump"></i></div>
+                <div class="card-value" id="fuel-level">75%</div>
+                <div class="card-label">Nível Combustível</div>
+            </div>
+            
+            <div class="card tooltip" data-tooltip="Pontuação de condução ecológica baseada em aceleração, frenagem e velocidade">
+                <div class="card-icon status-online"><i class="fas fa-leaf"></i></div>
+                <div class="card-value" id="eco-score-main">85</div>
+                <div class="card-label">Eco Score</div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">            <!-- Map -->
+            <div class="map-container">
+                <h3 style="margin-bottom: 1rem;"><i class="fas fa-map-marker-alt"></i> Localização em Tempo Real</h3>
+                <div id="map"></div>
+            </div>
+
+            <!-- Vehicle Info -->
+            <div class="vehicle-info">
+                <div class="vehicle-header">
+                    <div class="vehicle-icon"><i class="fas fa-car"></i></div>
+                    <div class="vehicle-details">
+                        <h3>Hyundai HB20 <span style="font-size: 0.8rem; color: var(--text-secondary);">(Piccolo Hybrid)</span></h3>
+                        <div class="vehicle-status" id="vehicle-status">Online</div>
+                    </div>
+                </div>                <div class="info-grid">
+                    <div class="info-item tooltip" data-tooltip="Placa de identificação do veículo">
+                        <div class="label">Placa</div>
+                        <div class="value">HYU-1234</div>
+                    </div>
+                    <div class="info-item tooltip" data-tooltip="Nome do condutor responsável pelo veículo">
+                        <div class="label">Motorista</div>
+                        <div class="value">João Silva</div>
+                    </div>
+                    <div class="info-item tooltip" data-tooltip="Rotações por minuto do motor do veículo">
+                        <div class="label">RPM Motor</div>
+                        <div class="value" id="rpm-value">2.500</div>
+                    </div>
+                    <div class="info-item tooltip" data-tooltip="Temperatura atual do motor em graus Celsius">
+                        <div class="label">Temperatura</div>
+                        <div class="value" id="temp-value">85°C</div>
+                    </div>
+                    <div class="info-item tooltip" data-tooltip="Quilometragem total percorrida pelo veículo">
+                        <div class="label">Hodômetro</div>
+                        <div class="value" id="odometer-value">45.230 km</div>
+                    </div>
+                    <div class="info-item tooltip" data-tooltip="Total de horas de funcionamento do motor">
+                        <div class="label">Horas Motor</div>
+                        <div class="value" id="engine-hours">1.250h</div>
+                    </div>
+                </div><div class="eco-score">
+                    <h4><i class="fas fa-leaf"></i> Eco Score</h4>
+                    <div class="eco-value" id="eco-score-detail">85</div>
+                    <div>Condução Econômica</div>
+                    
+                    <div class="eco-breakdown">
+                        <div class="eco-item">
+                            <div class="score" id="accel-score">90</div>
+                            <div class="label">Aceleração</div>
+                        </div>
+                        <div class="eco-item">
+                            <div class="score" id="brake-score">80</div>
+                            <div class="label">Frenagem</div>
+                        </div>
+                        <div class="eco-item">
+                            <div class="score" id="curve-score">85</div>
+                            <div class="label">Curvas</div>
+                        </div>
+                        <div class="eco-item">
+                            <div class="score" id="speed-score">85</div>
+                            <div class="label">Velocidade</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>        <!-- Events Log -->
+        <div class="events-log">
+            <h3 style="margin-bottom: 1rem;">
+                <i class="fas fa-clipboard-list"></i> Registro de Eventos
+                <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: normal;">
+                    (HYU-1234 - Piccolo Hybrid)
+                </span>
+            </h3>
+            <div id="events-container">
+                <!-- Events will be populated by JavaScript -->
+            </div>
+        </div>    </div>    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>// Dados mockados da frota - 5 veículos em João Pessoa/PB
+        let fleetData = [
+            {
+                equipamento_id: "PICCOLO_123456",
+                placa: "HYU-1234",
+                modelo: "Hyundai HB20",
+                motorista: "João Silva",
+                posicao: {
+                    latitude: -7.1195,
+                    longitude: -34.8450,
+                    velocidade: 65,
+                    direcao: 180,
+                    altitude: 30,
+                    precisao: 3,
+                    satelites: 10
+                },
+                veiculo: {
+                    ignicao: true,
+                    movimento: true,
+                    hodometro: 45230,
+                    hodometro_parcial: 1500,
+                    tensao_bateria: 12.8,
+                    tensao_fonte: 12.6,
+                    temperatura_interna: 25,
+                    gsm_sinal: 85,
+                    gps_ativo: true
+                },
+                obd2: {
+                    rpm_motor: 2500,
+                    velocidade_obd: 65,
+                    temperatura_motor: 85,
+                    nivel_combustivel: 75,
+                    consumo_instantaneo: 8.5,
+                    carga_motor: 45,
+                    posicao_acelerador: 35,
+                    temperatura_ar_admissao: 25,
+                    pressao_combustivel: 250,
+                    codigos_erro: [],
+                    numero_chassi: "1HGBH41JXMN109186",
+                    horas_motor: 1250
+                },
+                eventos: {
+                    excesso_velocidade: false,
+                    freada_brusca: false,
+                    aceleracao_brusca: false,
+                    curva_brusca: false,
+                    colisao: false,
+                    panico: false,
+                    cerca_eletronica: "dentro",
+                    motor_ligado: true,
+                    motor_desligado: false
+                },
+                eco_score: {
+                    pontuacao_geral: 85,
+                    aceleracao: 90,
+                    frenagem: 80,
+                    curvas: 85,
+                    velocidade: 85
+                }
+            },
+            {
+                equipamento_id: "PICCOLO_789123",
+                placa: "TOY-5678",
+                modelo: "Toyota Corolla",
+                motorista: "Maria Santos",
+                posicao: {
+                    latitude: -7.1064,
+                    longitude: -34.8364,
+                    velocidade: 45,
+                    direcao: 90,
+                    altitude: 25,
+                    precisao: 4,
+                    satelites: 9
+                },
+                veiculo: {
+                    ignicao: true,
+                    movimento: true,
+                    hodometro: 32150,
+                    hodometro_parcial: 850,
+                    tensao_bateria: 12.5,
+                    tensao_fonte: 12.3,
+                    temperatura_interna: 28,
+                    gsm_sinal: 78,
+                    gps_ativo: true
+                },
+                obd2: {
+                    rpm_motor: 1800,
+                    velocidade_obd: 45,
+                    temperatura_motor: 82,
+                    nivel_combustivel: 60,
+                    consumo_instantaneo: 6.8,
+                    carga_motor: 35,
+                    posicao_acelerador: 25,
+                    temperatura_ar_admissao: 28,
+                    pressao_combustivel: 240,
+                    codigos_erro: [],
+                    numero_chassi: "9BWZZZ377VT004251",
+                    horas_motor: 980
+                },
+                eventos: {
+                    excesso_velocidade: false,
+                    freada_brusca: false,
+                    aceleracao_brusca: false,
+                    curva_brusca: false,
+                    colisao: false,
+                    panico: false,
+                    cerca_eletronica: "dentro",
+                    motor_ligado: true,
+                    motor_desligado: false
+                },
+                eco_score: {
+                    pontuacao_geral: 92,
+                    aceleracao: 95,
+                    frenagem: 88,
+                    curvas: 90,
+                    velocidade: 95
+                }
+            },
+            {
+                equipamento_id: "PICCOLO_456789",
+                placa: "CHE-9012",
+                modelo: "Chevrolet Onix",
+                motorista: "Pedro Costa",
+                posicao: {
+                    latitude: -7.1308,
+                    longitude: -34.8608,
+                    velocidade: 80,
+                    direcao: 270,
+                    altitude: 15,
+                    precisao: 3,
+                    satelites: 11
+                },
+                veiculo: {
+                    ignicao: true,
+                    movimento: true,
+                    hodometro: 28950,
+                    hodometro_parcial: 2100,
+                    tensao_bateria: 12.9,
+                    tensao_fonte: 12.7,
+                    temperatura_interna: 26,
+                    gsm_sinal: 92,
+                    gps_ativo: true
+                },
+                obd2: {
+                    rpm_motor: 3200,
+                    velocidade_obd: 80,
+                    temperatura_motor: 88,
+                    nivel_combustivel: 35,
+                    consumo_instantaneo: 11.2,
+                    carga_motor: 65,
+                    posicao_acelerador: 55,
+                    temperatura_ar_admissao: 32,
+                    pressao_combustivel: 260,
+                    codigos_erro: [],
+                    numero_chassi: "9BGRD48X0JG123456",
+                    horas_motor: 750
+                },
+                eventos: {
+                    excesso_velocidade: true,
+                    freada_brusca: false,
+                    aceleracao_brusca: false,
+                    curva_brusca: false,
+                    colisao: false,
+                    panico: false,
+                    cerca_eletronica: "dentro",
+                    motor_ligado: true,
+                    motor_desligado: false
+                },
+                eco_score: {
+                    pontuacao_geral: 68,
+                    aceleracao: 72,
+                    frenagem: 75,
+                    curvas: 70,
+                    velocidade: 55
+                }
+            },
+            {
+                equipamento_id: "PICCOLO_321654",
+                placa: "VW-3456",
+                modelo: "Volkswagen Gol",
+                motorista: "Ana Oliveira",
+                posicao: {
+                    latitude: -7.0982,
+                    longitude: -34.8712,
+                    velocidade: 35,
+                    direcao: 45,
+                    altitude: 40,
+                    precisao: 4,
+                    satelites: 8
+                },
+                veiculo: {
+                    ignicao: true,
+                    movimento: true,
+                    hodometro: 67890,
+                    hodometro_parcial: 450,
+                    tensao_bateria: 12.2,
+                    tensao_fonte: 12.0,
+                    temperatura_interna: 30,
+                    gsm_sinal: 65,
+                    gps_ativo: true
+                },
+                obd2: {
+                    rpm_motor: 1500,
+                    velocidade_obd: 35,
+                    temperatura_motor: 79,
+                    nivel_combustivel: 90,
+                    consumo_instantaneo: 5.9,
+                    carga_motor: 28,
+                    posicao_acelerador: 20,
+                    temperatura_ar_admissao: 26,
+                    pressao_combustivel: 230,
+                    codigos_erro: [],
+                    numero_chassi: "9BWAA05W58T123789",
+                    horas_motor: 2150
+                },
+                eventos: {
+                    excesso_velocidade: false,
+                    freada_brusca: false,
+                    aceleracao_brusca: false,
+                    curva_brusca: false,
+                    colisao: false,
+                    panico: false,
+                    cerca_eletronica: "dentro",
+                    motor_ligado: true,
+                    motor_desligado: false
+                },
+                eco_score: {
+                    pontuacao_geral: 96,
+                    aceleracao: 98,
+                    frenagem: 95,
+                    curvas: 94,
+                    velocidade: 97
+                }
+            },
+            {
+                equipamento_id: "PICCOLO_987654",
+                placa: "FIA-7890",
+                modelo: "Fiat Argo",
+                motorista: "Carlos Lima",
+                posicao: {
+                    latitude: -7.1450,
+                    longitude: -34.8290,
+                    velocidade: 0,
+                    direcao: 0,
+                    altitude: 20,
+                    precisao: 5,
+                    satelites: 7
+                },
+                veiculo: {
+                    ignicao: false,
+                    movimento: false,
+                    hodometro: 15670,
+                    hodometro_parcial: 0,
+                    tensao_bateria: 12.1,
+                    tensao_fonte: 11.8,
+                    temperatura_interna: 32,
+                    gsm_sinal: 88,
+                    gps_ativo: true
+                },
+                obd2: {
+                    rpm_motor: 0,
+                    velocidade_obd: 0,
+                    temperatura_motor: 45,
+                    nivel_combustivel: 85,
+                    consumo_instantaneo: 0,
+                    carga_motor: 0,
+                    posicao_acelerador: 0,
+                    temperatura_ar_admissao: 32,
+                    pressao_combustivel: 0,
+                    codigos_erro: [],
+                    numero_chassi: "9BD15802LJB654321",
+                    horas_motor: 420
+                },
+                eventos: {
+                    excesso_velocidade: false,
+                    freada_brusca: false,
+                    aceleracao_brusca: false,
+                    curva_brusca: false,
+                    colisao: false,
+                    panico: false,
+                    cerca_eletronica: "dentro",
+                    motor_ligado: false,
+                    motor_desligado: true
+                },
+                eco_score: {
+                    pontuacao_geral: 88,
+                    aceleracao: 85,
+                    frenagem: 90,
+                    curvas: 88,
+                    velocidade: 90
+                }
+            }
+        ];
+
+        // Veículo atualmente selecionado (primeiro da lista por padrão)
+        let currentVehicleIndex = 0;
+        let vehicleData = fleetData[currentVehicleIndex];        // Variáveis do mapa
+        let map;
+        let vehicleMarkers = [];
+
+        // Função para inicializar o mapa
+        function initMap() {
+            // Coordenadas de João Pessoa/PB
+            const joaoPessoa = [-7.1195, -34.8450];
+            
+            // Criar o mapa
+            map = L.map('map').setView(joaoPessoa, 13);
+            
+            // Adicionar camada de tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            
+            // Adicionar marcadores para todos os veículos
+            fleetData.forEach((vehicle, index) => {
+                const isActive = vehicle.veiculo.ignicao;
+                const color = isActive ? '#28a745' : '#dc3545';
+                
+                // Criar ícone personalizado para cada veículo
+                const vehicleIcon = L.divIcon({
+                    className: 'vehicle-marker-leaflet',
+                    html: `<i class="fas fa-car" style="color: ${color}; font-size: 18px;"></i>`,
+                    iconSize: [25, 25],
+                    iconAnchor: [12, 12]
+                });
+                
+                // Adicionar marcador do veículo
+                const marker = L.marker([vehicle.posicao.latitude, vehicle.posicao.longitude], { 
+                    icon: vehicleIcon 
+                }).addTo(map);
+                
+                // Popup com informações do veículo
+                marker.bindPopup(`
+                    <div style="color: #ffffff; background: #2d2d2d; padding: 10px; border-radius: 6px; min-width: 200px;">
+                        <strong><i class="fas fa-car"></i> ${vehicle.modelo}</strong><br>
+                        <strong>Placa:</strong> ${vehicle.placa}<br>
+                        <strong>Motorista:</strong> ${vehicle.motorista}<br>
+                        <strong>Velocidade:</strong> ${Math.round(vehicle.posicao.velocidade)} km/h<br>
+                        <strong>Combustível:</strong> ${Math.round(vehicle.obd2.nivel_combustivel)}%<br>
+                        <strong>Status:</strong> <span style="color: ${color};">${isActive ? 'Online' : 'Offline'}</span><br>
+                        <hr style="border-color: #444; margin: 8px 0;">
+                        <button onclick="selectVehicle(${index})" style="background: #4a90e2; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; width: 100%;">
+                            Ver Detalhes
+                        </button>
+                    </div>
+                `);
+                
+                vehicleMarkers.push(marker);
+            });
+        }
+
+        // Função para selecionar um veículo específico
+        function selectVehicle(index) {
+            currentVehicleIndex = index;
+            vehicleData = fleetData[currentVehicleIndex];
+            updateDashboard();
+            renderEvents();
+            
+            // Centralizar mapa no veículo selecionado
+            const vehicle = fleetData[index];
+            map.setView([vehicle.posicao.latitude, vehicle.posicao.longitude], 15);
+        }        // Função para atualizar posição do marcador (simular movimento)
+        function updateVehiclePosition() {
+            // Atualizar todos os veículos
+            fleetData.forEach((vehicle, index) => {
+                if (vehicleMarkers[index] && vehicle.veiculo.ignicao) {
+                    // Pequenas variações na posição para simular movimento
+                    const lat = vehicle.posicao.latitude + (Math.random() - 0.5) * 0.001;
+                    const lng = vehicle.posicao.longitude + (Math.random() - 0.5) * 0.001;
+                    
+                    vehicleMarkers[index].setLatLng([lat, lng]);
+                    
+                    // Atualizar popup
+                    const isActive = vehicle.veiculo.ignicao;
+                    const color = isActive ? '#28a745' : '#dc3545';
+                    
+                    vehicleMarkers[index].getPopup().setContent(`
+                        <div style="color: #ffffff; background: #2d2d2d; padding: 10px; border-radius: 6px; min-width: 200px;">
+                            <strong><i class="fas fa-car"></i> ${vehicle.modelo}</strong><br>
+                            <strong>Placa:</strong> ${vehicle.placa}<br>
+                            <strong>Motorista:</strong> ${vehicle.motorista}<br>
+                            <strong>Velocidade:</strong> ${Math.round(vehicle.posicao.velocidade)} km/h<br>
+                            <strong>Combustível:</strong> ${Math.round(vehicle.obd2.nivel_combustivel)}%<br>
+                            <strong>Status:</strong> <span style="color: ${color};">${isActive ? 'Online' : 'Offline'}</span><br>
+                            <hr style="border-color: #444; margin: 8px 0;">
+                            <button onclick="selectVehicle(${index})" style="background: #4a90e2; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; width: 100%;">
+                                Ver Detalhes
+                            </button>
+                        </div>
+                    `);
+                }
+            });
+        }
+        let eventsList = [
+            { type: 'info', icon: '<i class="fas fa-power-off"></i>', title: 'Motor ligado', time: '10:30:15', bg: '#3498db' },
+            { type: 'success', icon: '<i class="fas fa-play"></i>', title: 'Viagem iniciada', time: '10:28:32', bg: '#27ae60' },
+            { type: 'warning', icon: '<i class="fas fa-exclamation-triangle"></i>', title: 'Velocidade acima de 60 km/h', time: '10:25:18', bg: '#f39c12' },
+            { type: 'info', icon: '<i class="fas fa-map-pin"></i>', title: 'Entrada na cerca: Centro João Pessoa', time: '10:20:45', bg: '#3498db' },
+            { type: 'success', icon: '<i class="fas fa-gas-pump"></i>', title: 'Consumo eficiente detectado', time: '10:15:22', bg: '#27ae60' },
+            { type: 'info', icon: '<i class="fas fa-route"></i>', title: 'Rota: Av. Epitácio Pessoa', time: '10:12:18', bg: '#3498db' },
+            { type: 'success', icon: '<i class="fas fa-leaf"></i>', title: 'Eco Score melhorado', time: '10:08:45', bg: '#27ae60' }
+        ];        // Função para atualizar dados na tela
+        function updateDashboard() {
+            // Contar veículos ativos (com ignição ligada)
+            const activeVehicles = fleetData.filter(vehicle => vehicle.veiculo.ignicao).length;
+            
+            // Atualizar cards principais
+            document.getElementById('vehicle-count').textContent = activeVehicles;
+            document.getElementById('current-speed').textContent = Math.round(vehicleData.posicao.velocidade);
+            document.getElementById('fuel-level').textContent = Math.round(vehicleData.obd2.nivel_combustivel) + '%';
+            document.getElementById('eco-score-main').textContent = Math.round(vehicleData.eco_score.pontuacao_geral);
+            
+            // Atualizar informações do veículo
+            document.getElementById('rpm-value').textContent = Math.round(vehicleData.obd2.rpm_motor).toLocaleString();
+            document.getElementById('temp-value').textContent = Math.round(vehicleData.obd2.temperatura_motor) + '°C';
+            document.getElementById('odometer-value').textContent = Math.round(vehicleData.veiculo.hodometro).toLocaleString() + ' km';
+            document.getElementById('engine-hours').textContent = Math.round(vehicleData.obd2.horas_motor) + 'h';
+            
+            // Atualizar eco score
+            document.getElementById('eco-score-detail').textContent = Math.round(vehicleData.eco_score.pontuacao_geral);
+            document.getElementById('accel-score').textContent = Math.round(vehicleData.eco_score.aceleracao);
+            document.getElementById('brake-score').textContent = Math.round(vehicleData.eco_score.frenagem);
+            document.getElementById('curve-score').textContent = Math.round(vehicleData.eco_score.curvas);
+            document.getElementById('speed-score').textContent = Math.round(vehicleData.eco_score.velocidade);
+        }
+
+        // Função para renderizar eventos
+        function renderEvents() {
+            const container = document.getElementById('events-container');
+            const title = document.querySelector('.events-log h3');
+            
+            // Atualizar título com informações do veículo
+            title.innerHTML = `
+                <i class="fas fa-clipboard-list"></i> Registro de Eventos
+                <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: normal;">
+                    (${vehicleData.placa} - ${vehicleData.modelo})
+                </span>
+            `;
+            
+            container.innerHTML = '';
+            
+            eventsList.forEach(event => {
+                const eventDiv = document.createElement('div');
+                eventDiv.className = 'event-item';
+                eventDiv.innerHTML = `
+                    <div class="event-icon" style="background: ${event.bg};">
+                        ${event.icon}
+                    </div>
+                    <div class="event-info">
+                        <div class="event-title">${event.title}</div>
+                        <div class="event-time">Hoje às ${event.time}</div>
+                    </div>
+                `;
+                container.appendChild(eventDiv);
+            });
+        }
+
+        // Função para simular mudanças nos dados
+        function simulateDataChanges() {
+            // Variar velocidade
+            const speedVariation = Math.random() * 10 - 5; // -5 a +5
+            vehicleData.posicao.velocidade = Math.max(0, Math.min(120, vehicleData.posicao.velocidade + speedVariation));
+            
+            // Variar RPM baseado na velocidade
+            vehicleData.obd2.rpm_motor = Math.round(vehicleData.posicao.velocidade * 35 + Math.random() * 200);
+            
+            // Variar combustível (diminuir lentamente)
+            if (Math.random() < 0.3) {
+                vehicleData.obd2.nivel_combustivel = Math.max(0, vehicleData.obd2.nivel_combustivel - 0.1);
+            }
+            
+            // Variar temperatura do motor
+            const tempVariation = Math.random() * 4 - 2; // -2 a +2
+            vehicleData.obd2.temperatura_motor = Math.max(70, Math.min(100, vehicleData.obd2.temperatura_motor + tempVariation));
+            
+            // Incrementar hodômetro baseado na velocidade
+            vehicleData.veiculo.hodometro += vehicleData.posicao.velocidade / 3600 * 5; // a cada 5 segundos
+            
+            // Calcular eco score baseado na condução
+            const speedPenalty = vehicleData.posicao.velocidade > 80 ? -5 : 0;
+            const rpmPenalty = vehicleData.obd2.rpm_motor > 3000 ? -3 : 0;
+            vehicleData.eco_score.pontuacao_geral = Math.max(60, Math.min(100, 85 + speedPenalty + rpmPenalty + Math.random() * 4 - 2));
+            
+            // Adicionar eventos ocasionalmente
+            if (Math.random() < 0.05) { // 5% de chance a cada atualização
+                addRandomEvent();
+            }
+        }        // Função para adicionar eventos aleatórios
+        function addRandomEvent() {
+            const randomEvents = [
+                { type: 'info', icon: '<i class="fas fa-map-pin"></i>', title: 'Posição atualizada - João Pessoa/PB', bg: '#3498db' },
+                { type: 'success', icon: '<i class="fas fa-gas-pump"></i>', title: 'Condução econômica detectada', bg: '#27ae60' },
+                { type: 'warning', icon: '<i class="fas fa-exclamation-triangle"></i>', title: 'Velocidade elevada na BR-230', bg: '#f39c12' },
+                { type: 'info', icon: '<i class="fas fa-sync"></i>', title: 'Dados Piccolo sincronizados', bg: '#3498db' },
+                { type: 'info', icon: '<i class="fas fa-route"></i>', title: 'Tráfego na Av. Cabo Branco', bg: '#3498db' },
+                { type: 'success', icon: '<i class="fas fa-leaf"></i>', title: 'Condução sustentável - Centro JP', bg: '#27ae60' },
+                { type: 'info', icon: '<i class="fas fa-satellite"></i>', title: 'GPS atualizado - Piccolo Hybrid', bg: '#3498db' }
+            ];
+            
+            const randomEvent = randomEvents[Math.floor(Math.random() * randomEvents.length)];
+            const now = new Date();
+            const timeString = now.toTimeString().substr(0, 8);
+            
+            eventsList.unshift({
+                ...randomEvent,
+                time: timeString
+            });
+            
+            // Manter apenas os últimos 10 eventos
+            if (eventsList.length > 10) {
+                eventsList = eventsList.slice(0, 10);
+            }
+            
+            renderEvents();
+        }        // Inicializar aplicação
+        function init() {
+            initMap(); // Inicializar mapa
+            updateDashboard();
+            renderEvents();
+            
+            // Atualizar posição do veículo no mapa a cada 10 segundos
+            setInterval(() => {
+                updateVehiclePosition();
+            }, 10000);
+            
+            // Atualizar dados a cada 5 segundos
+            setInterval(() => {
+                simulateDataChanges();
+                updateDashboard();
+            }, 5000);
+            
+            // Atualizar timestamp do último dados
+            setInterval(() => {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('pt-BR');
+                // Você pode adicionar um elemento para mostrar última atualização se quiser
+            }, 1000);
+        }
+
+        // Iniciar quando a página carregar
+        document.addEventListener('DOMContentLoaded', init);
+
+        // Simular dados ao vivo - console para debug
+        console.log('🚗 MinhaFrota MVP iniciado - Emulando Piccolo Hybrid!');
+        console.log('📍 Localização: João Pessoa/PB');
+        console.log('📊 Dados do veículo:', vehicleData);
+        console.log('⚡ Simulação de dados ao vivo ativa');
+    </script>
+</body>
+</html>
